@@ -1,0 +1,11 @@
+driver.bin built from the Famitracker driver 2.0 from Famitracker.shoodot.net
+
+http://famitracker.shoodot.net/downloads.php
+NSF driver source v2.0
+
+Assembled using:
+	ca65 driver.s -D DRIVER_MODE -D MODE1 --listing
+	ld65 -C clean.cfg -o driver.bin driver.o -v -m map.txt
+
+
+We may include the source for this into the project at some stage to baseline the version?

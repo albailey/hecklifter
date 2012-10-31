@@ -1,0 +1,12 @@
+Using the Image Helper app.
+---------------------------
+Red Contrast: 1.2
+Green Contrast: 1.2
+Blue Contrast: 1
+Brightness: 1
+
+Border Width: 	7
+Border Height: 	10
+7 Unique Colors
+
+Total Tiles: 217

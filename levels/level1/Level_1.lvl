@@ -1,0 +1,24 @@
+; Level: C:\Personal\NES\Dev\src\hellraiser\hecklifter\levels\editor\level1.level
+Level_1:
+.byt $00 ; Tilebank.  Change this to whichever bank is used for the tiles
+.byt $25 ; Number of CHR Tiles to load. F0 is the max
+.addr Level_1Tiles ; Address of CHR Tiles to loadinto $0000
+.addr Level_1TileSet ; Address of MetaTileSet to use
+.byt $08 ; Num Level screens. 
+.addr Level_1Columns ; Address of columns used by this level
+
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-= 
+; This section is the palette
+.include Level_1.palette
+
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-= 
+; This section are the metatiles
+.include Level_1.metatiles
+
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-= 
+; This section are the tiles
+.incbin Level_1.tiles
+
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-= 
+; This section are the columns.
+.include Level_1.columns
