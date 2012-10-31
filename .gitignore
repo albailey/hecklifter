@@ -1,0 +1,6 @@
+# Object files
+*.o
+
+# Final Output
+*.nes
+

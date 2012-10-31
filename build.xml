@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+
+<project name="hecklifter" default="usage">
+  <property name="projName" value="formalBuild"/>
+  <property name="base.dir" location="."/> 
+
+
+<target name="usage" description="usage for ${projName} build script">
+<echo level="info">
+   Ant build file for ${projName}
+   UNDER CONSTRUCTION
+</echo>
+</target>
+
+</project>
+
