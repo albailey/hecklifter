@@ -1,0 +1,13 @@
+Using the Image Helper app.
+Scene3
+---------------------------
+Border Width: 	7
+Border Height: 	10
+7 Unique Colors
+
+Red Contrast:   1.2
+Green Contrast: 1.2
+Blue Contrast:  1.1
+Brightness:     1.1
+
+Total Tiles: 214 Tiles

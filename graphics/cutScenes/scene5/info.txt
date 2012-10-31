@@ -1,0 +1,9 @@
+Using the Image Helper app.
+Scene5
+---------------------------
+Red Contrast:   0.8
+Green Contrast: 0.8
+Blue Contrast:  0.8
+Brightness:     1.1
+
+Total Tiles: 141 Tiles
