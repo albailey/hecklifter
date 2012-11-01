@@ -9,10 +9,25 @@
 
   <property name="CC65_INSTALL" location="${CC65_PATH}"/> 
   <property name="CC65_BIN" location="${CC65_INSTALL}/bin"/> 
+
   <property name="CC65_TOOL" location="${CC65_BIN}/cc65.exe"/> 
+  <property name="CA65_TOOL" location="${CC65_BIN}/ca65.exe"/> 
+  <property name="LD65_TOOL" location="${CC65_BIN}/ld65.exe"/> 
 
   <property name="ROM_FILE" value="${projName}.nes"/>
   <property name="C_FILES" value="hecksample.c"/>
+
+
+  <property name="STATUS_SETTINGS" value="-DTOP_STATUS=1"/>
+
+
+
+  <property name="BUILD_SETTINGS" value="${STATUS_SETTINGS}"/>
+
+  <property name="ASM_SETTINGS" value="${STATUS_SETTINGS}"/>
+  <property name="ASM_INCLUDES" value="-I ../title -I ../levels -I ../cutScene -I ../statusBar -I .."/>
+
+  <property name="ASM_EXCLUDES" value="header.s,sounds.s,music.s,neslib.s,famitone.s"/>
 
 
 <target name="usage" description="usage for ${projName} build script">
@@ -33,7 +48,11 @@
 </target>
 
 <target name="clean">
-    <delete file="${src.dir}/**.o" failonerror="false"/>
+    <delete failonerror="false">
+    	<fileset dir="${src.dir}" includes="**.o" />
+    </delete>
+    <delete file="${ROM_FILE}" failonerror="false"/>
+    <delete file="${src.dir}/hecksample.s" failonerror="false"/>
 </target>
 
 <target name="run">
@@ -43,14 +62,43 @@
 </target>
 
 <target name="build">
-  <antcall target="compile_c"/>
+
+  <!-- Compile C to ASM  -->
+  <exec executable="${CC65_TOOL}" dir="${src.dir}" failonerror="true">
+    <arg line="-Oi ${C_FILES} --add-source ${BUILD_SETTINGS} "/>
+  </exec>
+
+  <!-- Compile ASM  -->
+  <apply executable="${CA65_TOOL}" dir="src" relative="true" parallel="false">
+	<fileset dir="src" includes="*.s" excludes="${ASM_EXCLUDES}"/>
+	<srcfile/>
+	<arg line="${ASM_INCLUDES}"/>
+	<arg line="${ASM_SETTINGS}"/>
+  </apply>
+
+  <!-- Link it -->
+  <exec executable="${LD65_TOOL}" dir="${src.dir}" failonerror="true">
+    <arg line="-C nes.cfg -o ../${ROM_FILE} *.o runtime.lib"/>
+  </exec>
+
+
 </target>
 
-<target name="compile_c">
-	<echo> Invoking cc65 for C Files UNDER CONSTRUCTION</echo>
-        <exec executable="${CC65_TOOL}" dir="${src.dir}" failonerror="true">
-	      <arg line="${C_FILES}"/>
-	</exec>
+<target name="info">
+<echo>  
+  These are the current build and link steps
+
+  cc65 -Oi hecksample.c --add-source %DEFINES%
+  ca65 crt0.s
+  ca65 mmc1Mapper.s
+  ca65 utils.s
+  ca65 cutSceneEngine.s -I ../cutScene  -I ..
+  ca65 titleScreen.s -I ../title -I ..
+  ca65 statusBar.s -I ../statusBar -I .. %STATUS_DEFINES%
+  ca65 level1.s -I ../levels/level1 -I ..
+  ca65 hecksample.s
+  ld65 -C nes.cfg -o ../hecksample.nes crt0.o mmc1Mapper.o utils.o  cutSceneEngine.o titleScreen.o statusBar.o level1.o hecksample.o runtime.lib
+</echo>  
 </target>
 
 </project>

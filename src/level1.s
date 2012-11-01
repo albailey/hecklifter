@@ -8,16 +8,16 @@
 .segment "BANK5"
 
 _LEVEL1_TILES_ADDR:
-.incbin "Level_1.tiles"
+.incbin "level1/Level_1.tiles"
 
 _LEVEL1_PALETTE_ADDR:
-.include "Level_1.palette"
+.include "level1/Level_1.palette"
 
 _LEVEL1_METATILES_ADDR:
-.include "Level_1.metatiles"
+.include "level1/Level_1.metatiles"
 
 _LEVEL1_COLUMNS_ADDR:
-.include "Level_1.columns"
+.include "level1/Level_1.columns"
 
 
 .segment "BANKF"
