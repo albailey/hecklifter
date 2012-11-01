@@ -1,15 +1,56 @@
 <?xml version="1.0"?>
 
 <project name="hecklifter" default="usage">
-  <property name="projName" value="formalBuild"/>
+
+  <property name="projName" value="hecklifter"/>
   <property name="base.dir" location="."/> 
+  <property name="src.dir" location="${base.dir}/src"/> 
+  <property file="dev.properties"/>
+
+  <property name="CC65_INSTALL" location="${CC65_PATH}"/> 
+  <property name="CC65_BIN" location="${CC65_INSTALL}/bin"/> 
+  <property name="CC65_TOOL" location="${CC65_BIN}/cc65.exe"/> 
+
+  <property name="ROM_FILE" value="${projName}.nes"/>
+  <property name="C_FILES" value="hecksample.c"/>
 
 
 <target name="usage" description="usage for ${projName} build script">
 <echo level="info">
-   Ant build file for ${projName}
    UNDER CONSTRUCTION
+
+   Ant build file for ${projName}
+
+   ant build     - Build the NES game
+
 </echo>
+</target>
+
+<target name="all">
+  <antcall target="clean"/>
+  <antcall target="build"/>
+  <antcall target="run"/>
+</target>
+
+<target name="clean">
+    <delete file="${src.dir}/**.o" failonerror="false"/>
+</target>
+
+<target name="run">
+        <exec executable="${EMULATOR}" dir="${base.dir}" failonerror="true">
+	      <arg line="${ROM_FILE}"/>
+	</exec>
+</target>
+
+<target name="build">
+  <antcall target="compile_c"/>
+</target>
+
+<target name="compile_c">
+	<echo> Invoking cc65 for C Files UNDER CONSTRUCTION</echo>
+        <exec executable="${CC65_TOOL}" dir="${src.dir}" failonerror="true">
+	      <arg line="${C_FILES}"/>
+	</exec>
 </target>
 
 </project>

@@ -4,3 +4,9 @@
 # Final Output
 *.nes
 
+# Intermediate files
+hecksample.s
+
+# Dev environment settings
+dev.properties
+
