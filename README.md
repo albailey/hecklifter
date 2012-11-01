@@ -28,4 +28,13 @@ Building
  - ant all
  - This assumes ant is setup properly in your PATH 
 
+Known Problems
+==============
+This is still an early development port of working ASM code which is being rewritten in CC65 compatably C code.  
+It's far from being usable.
+- Scrolling and status area flickering when running in Nintendulator (which means it will likely have the same problems on real hardware)
+- Several grey lines at the top.  Those are added to indicate timing.  I need to add build settings to turn them off.
 
+TO DO
+======
+- move the contents of the TODO file here.
