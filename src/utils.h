@@ -10,6 +10,7 @@ void __fastcall__ inc32WithGraphicsOff(void);
 //wait until sprite zero has been intersected
 void __fastcall__ ppu_wait_SpriteZeroHit(void);
 
+void __fastcall__ setSplitScroll(unsigned char x);
 void __fastcall__ scrollXNow(unsigned char x);
 void __fastcall__ setScreenNow(unsigned char ppuctrl);
 

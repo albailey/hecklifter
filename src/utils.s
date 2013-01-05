@@ -12,12 +12,13 @@
 
 ; I cannot get import to work so I will redeclare TEMP here the same as in crt0.s
 VRAMUPDATE      =$03
-TEMP            =$1c
+TEMP            =$1e
 
 TEMP_VAR1 = TEMP
 TEMP_VAR2 = TEMP+1
 TEMP_VAR3 = TEMP+2
 TEMP_VAR4 = TEMP+3
+
 
 
 ;void __fastcall__ inc1WithGraphicsOff();
@@ -36,9 +37,11 @@ _inc32WithGraphicsOff:
 _ppu_wait_SpriteZeroHit:
 	LDA #1
 	STA VRAMUPDATE
+
         ; Wait for Scanline #0 to reset the Sprite #0 hit flag
 :       BIT $2002
         BVS :-
+
 
         ; Wait for the first intersected pixel of sprite #0 to be rendered
 :       BIT $2002
