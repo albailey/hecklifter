@@ -16,6 +16,7 @@
 	.export _rand8,_rand16,_set_rand
 	.export _set_vram_update,_vram_adr,_vram_put,_vram_fill,_vram_inc
 	.export _memcpy
+	.export _setSplitScroll
 
 
 
@@ -27,6 +28,7 @@ nmi:
 	pha
 	tya
 	pha
+
 
 	lda <VRAMUPDATE
 	bne @upd
@@ -94,7 +96,29 @@ nmi:
 	sta <FRAMECNT2
 @skipNtsc:
 
+	lda <SPR_ZERO
+	beq @skipSprZero
+
+        ; Wait for Scanline #0 to reset the Sprite #0 hit flag
+:       BIT $2002
+        BVS :-
+
+        ; Wait for the first intersected pixel of sprite #0 to be rendered
+:       BIT $2002
+        BVC :-
+
+	; Set the new Scroll (only X. Reset Y to zero)
+	lda <SPR_ZERO_SCROLL_X
+	sta PPU_SCROLL
+	lda #0
+	sta PPU_SCROLL
+	
+	
+        ; This code adjusts the scroll again after sprite zero has been intersected
+@skipSprZero:
+
 	jsr FamiToneUpdate
+
 
 	pla
 	tay
@@ -791,6 +815,13 @@ _vram_inc:
 	sta PPU_CTRL
 	rts
 
+
+;void __fastcall__ setSplitScroll(unsigned char x);
+_setSplitScroll:
+        STA SPR_ZERO_SCROLL_X
+        LDA #1
+        STA SPR_ZERO
+        RTS
 
 
 ;void __fastcall__ memcpy(void *dst,void *src,unsigned int len);

@@ -171,6 +171,7 @@ void __fastcall__ vram_write(unsigned char *src,unsigned int adr,unsigned int si
 void __fastcall__ unrle_vram(const unsigned char *data,unsigned int vram);
 
 
+void __fastcall__ setSplitScroll(unsigned char n);
 
 //like a normal memcpy, but does not return anything
 
