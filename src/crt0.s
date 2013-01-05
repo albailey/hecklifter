@@ -9,7 +9,7 @@ FT_SFX_STREAMS			=4	;number of sound effects played at once, can be 4 or less (f
 .define FT_DPCM_ENABLE 	0	;zero to exclude all the DMC code
 .define FT_SFX_ENABLE  	1	;zero to exclude all the sound effects code
 
-.define SPEED_FIX		1	;zero if you want to handle PAL/NTSC speed difference by yourself
+.define SPEED_FIX		0	;zero if you want to handle PAL/NTSC speed difference by yourself
 
 
 
@@ -62,7 +62,10 @@ NAME_UPD_LEN=$17
 PAL_PTR		=$18	;word
 RAND_SEED	=$1a	;word
 
-TEMP		=$1c
+SPR_ZERO	=$1c
+SPR_ZERO_SCROLL_X	=$1d
+
+TEMP		=$1e
 
 PAD_BUF		=TEMP+1
 
@@ -78,6 +81,7 @@ RLE_LOW		=TEMP
 RLE_HIGH	=TEMP+1
 RLE_TAG		=TEMP+2
 RLE_BYTE	=TEMP+3
+
 
 
 

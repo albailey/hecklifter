@@ -12,7 +12,6 @@
 #define PAGE_EOR_PPU_SETTINGS      0x01
 
 
-
 #define NTSC_FPS 60
 
 #define NUM_FADE_STEPS 5
@@ -774,22 +773,23 @@ void updateEnvironment()
 {
 }
 
+void wtf() {
+}
+
 void playLevel() 
 {
 	loadLevel(currentLevel);
 	while(1)
 	{
-                ppu_wait_SpriteZeroHit();
+     		ppu_waitnmi();
 		showLine();
-    		scrollXNow(scroll_x);
     		setScreenNow(currentPagePPU);
-		showLine();
 		getPlayerInput();
 		updatePlayer();
 		updateMonsters();
 		updateEnvironment();
+		setSplitScroll(scroll_x);
 		prepareForNMI();
-		showLine();
 	}
 }
 
