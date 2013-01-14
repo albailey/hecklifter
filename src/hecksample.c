@@ -22,6 +22,10 @@
 #define MSB(x)          (((x)>>8))
 #define LSB(x)          (((x)&0xff))
 
+#define SET_ODD_OAM_MASK    0x33
+#define SET_EVEN_OAM_MASK   0xCC
+
+
 
 
 #include "neslib.h"
@@ -48,9 +52,8 @@ unsigned char tmpPalette1[16];
 int tmpAddr;
 
 unsigned char tmpPalette2[16];
-static unsigned char i,j,k;
+static unsigned char i,j,k,l;
 static unsigned char single_update[3];
-static unsigned char numLoad;
 unsigned char* tmpCharAddr;
 
 // ---------------------------------------------------------------------------
@@ -89,9 +92,13 @@ static unsigned char level;
 static unsigned char meta;
 unsigned char columnSet1[ COLUMN_HEIGHT * 2 ];
 unsigned char columnSet2[ COLUMN_HEIGHT * 2 ];
+
 unsigned char columnOAM[ NUM_OAM_UPDATES ];
 unsigned char columnOAM1[ COLUMN_HEIGHT ];
 unsigned char columnOAM2[ COLUMN_HEIGHT ];
+unsigned char allOAM1[ 64 - NAMETABLE_OAM_OFFSET];
+unsigned char allOAM2[ 64 - NAMETABLE_OAM_OFFSET];
+
 unsigned char collision[ COLUMN_HEIGHT ];
 
 static unsigned char column1_update[COLUMN_HEIGHT * 2 * 3];
@@ -412,7 +419,9 @@ void prepareLoadNametableColumn(unsigned char srcIndex, unsigned char destColumn
 		columnSet1[k+1] = *(tmpCharAddr+1);
 		columnSet2[k]   = *(tmpCharAddr+2);
 		columnSet2[k+1] = *(tmpCharAddr+3);
+
 		columnOAM2[j]    = *(tmpCharAddr+4);
+
 		collision[j]    = *(tmpCharAddr+5);
 		k+=2;
 	}
@@ -424,9 +433,9 @@ void prepareLoadNametableColumn(unsigned char srcIndex, unsigned char destColumn
 	k=0;
 	for(j=0;j<COLUMN_HEIGHT;j+=2) {
 		if( j+2 <= COLUMN_HEIGHT ) {
-			columnOAM[k] = (columnOAM1[j] << 0) | (columnOAM2[j]<< 2) | (columnOAM1[j+1]<< 4) | (columnOAM2[j+1] << 6);
+			columnOAM[k] = (columnOAM1[j] ) | (columnOAM2[j]<< 2) | (columnOAM1[j+1]<< 4) | (columnOAM2[j+1] << 6);
 		} else {
-			columnOAM[k] = (columnOAM1[j] << 0) | (columnOAM2[j]<< 2);
+			columnOAM[k] = (columnOAM1[j] ) | (columnOAM2[j]<< 2);
 		}
 		k++;
 	}
@@ -451,6 +460,7 @@ void nmiLoadNametableColumn(unsigned char srcIndex, unsigned char destColumn)
 	addr += ((destColumn % 16) << 1) + NAMETABLE_OFFSET;
 
 	k = 0;
+        
 	for(j=0;j<COLUMN_HEIGHT;++j) {
 		// each metatile consists of 4 tiles and an OAM attrib
 		meta = *((unsigned char*)tmpAddr);
@@ -471,39 +481,22 @@ void nmiLoadNametableColumn(unsigned char srcIndex, unsigned char destColumn)
 		column2_update[k+4] = LSB(addr+33);
 		column2_update[k+5] = *(tmpCharAddr+3);
 
+		// OAM needs to be processed by doing READs as well
+		columnOAM1[j]    = *(tmpCharAddr+4);
 
-		columnOAM2[j]    = *(tmpCharAddr+4);
 		collision[j]    = *(tmpCharAddr+5);
 		addr += 64;
 		k+=6;
-
 	}
-/*
-	if(destColumn % 2 == 0) {
-		// copy OAM2 to OAM1 on even columns
-		memcpy(columnOAM1, columnOAM2, COLUMN_HEIGHT);
-	}
-
-	k=0;
-	for(j=0;j<COLUMN_HEIGHT;j+=2) {
-		if( j+2 <= COLUMN_HEIGHT ) {
-			columnOAM[k] = (columnOAM1[j] << 0) | (columnOAM2[j]<< 2) | (columnOAM1[j+1]<< 4) | (columnOAM2[j+1] << 6);
-		} else {
-			columnOAM[k] = (columnOAM1[j] << 0) | (columnOAM2[j]<< 2);
-		}
-		k++;
-	}
-*/
+	// Store OAM starting point
+	oam_column_update[0] = destColumn;
 
         nmiLoad = 3;
         // schedule 3 sets of off screen updates
 }
 
 void prepareForNMI() {
-	if(nmiLoad == 0) {
-		return;
-	}
-	if(nmiLoad == 1) {
+	if(nmiLoad == 3) {
 		// COL 1
     		set_vram_update(COLUMN_HEIGHT * 2, column1_update);
 	}
@@ -511,8 +504,61 @@ void prepareForNMI() {
 		// COL 2
     		set_vram_update(COLUMN_HEIGHT * 2, column2_update);
 	}
-	if(nmiLoad == 3) {
+	if(nmiLoad == 1) {
 		// OAM
+		j = oam_column_update[0];
+		addr = ((j >= 16) ? 0x2800 : 0x2400) - 64;
+		addr += NAMETABLE_OAM_OFFSET;
+		l = ((j % 16) / 2); 	
+		addr += l;
+
+		k=0;
+		// OAM value = (topleft << 0) | (topright << 2) | (bottomleft << 4) | (bottomright << 6)
+		if (j % 2 == 1) {
+			if(j>=16) {
+				for (j=0;j<NUM_OAM_UPDATES;j++) {
+					columnOAM[j] = (allOAM2[ l + (j<<3) ] & SET_ODD_OAM_MASK) | ((columnOAM1[k+1] << 6) | (columnOAM1[k] << 2));
+					allOAM2[l+(j<<3)] = columnOAM[j];
+					k+=2;
+				}
+			} else {
+				for (j=0;j<NUM_OAM_UPDATES;j++) {
+					columnOAM[j] = (allOAM1[ l + (j<<3) ] & SET_ODD_OAM_MASK) | ((columnOAM1[k+1] << 6) | (columnOAM1[k] << 2));
+					allOAM1[l+(j<<3)] = columnOAM[j];
+					k+=2;
+				}
+			}
+
+		} else {
+			if(j>=16) {
+				for (j=0;j<NUM_OAM_UPDATES;j++) {
+					columnOAM[j] = (allOAM2[ l + (j<<3) ] & SET_EVEN_OAM_MASK) | ((columnOAM1[k+1] << 4) | columnOAM1[k]);
+					allOAM2[l+(j<<3)] = columnOAM[j];
+					k+=2;
+				}
+			} else {
+				for (j=0;j<NUM_OAM_UPDATES;j++) {
+					columnOAM[j] = (allOAM1[ l + (j<<3) ] & SET_EVEN_OAM_MASK) | ((columnOAM1[k+1] << 4) | columnOAM1[k]);
+					allOAM1[l+(j<<3)] = columnOAM[j];
+					k+=2;
+				}
+			}
+		}
+
+		k=0;
+		for (j=0;j<NUM_OAM_UPDATES;j++) {
+			oam_column_update[k] = MSB(addr);
+			oam_column_update[k+1] = LSB(addr);
+			oam_column_update[k+2] = columnOAM[j];
+			addr += 8;
+			k+=3;
+		}
+
+    		set_vram_update(NUM_OAM_UPDATES, oam_column_update);
+	}
+	if(nmiLoad == 0) {
+    		set_vram_update(0, column1_update);
+		return; // jump out early so we do not decrement further
 	}
 	--nmiLoad;
 }
@@ -531,11 +577,28 @@ void loadNametableColumn(unsigned char srcIndex, unsigned char destColumn)
 
 	addr = ((destColumn >= 16) ? 0x2800 : 0x2400) - 64;
 	addr += NAMETABLE_OAM_OFFSET;
-	addr += ((destColumn % 16) / 2); 	
-	for(j=0;j<NUM_OAM_UPDATES;++j){
-		vram_adr(addr + (j<<3));
-		vram_put(columnOAM[j]);
+	k = ((destColumn % 16) / 2 );
+	addr += k;
+	if (destColumn >= 16) {
+		for(j=0;j<NUM_OAM_UPDATES;++j) {
+			vram_adr(addr + (j<<3));
+			vram_put(columnOAM[j]);
+			// store in memory version of OAM
+			allOAM2[k + (j << 3)] = columnOAM[j];
+			// uncomment next line to help find attribute in debugger
+			//allOAM2[k + (j << 3)] = 0xFA;
+		}
+	} else {
+		for(j=0;j<NUM_OAM_UPDATES;++j) {
+			vram_adr(addr + (j<<3));
+			vram_put(columnOAM[j]);
+			// store in memory version of OAM
+			allOAM1[k + (j << 3)] = columnOAM[j];
+			// uncomment next line to help find attribute in debugger
+			//allOAM1[k + (j << 3)] = 0xFB;
+		}
 	}
+	
 
 
 }
