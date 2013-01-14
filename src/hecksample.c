@@ -845,7 +845,9 @@ void playLevel()
 	while(1)
 	{
      		ppu_waitnmi();
+#ifdef DEV_MODE
 		showLine();
+#endif
     		setScreenNow(currentPagePPU);
 		getPlayerInput();
 		updatePlayer();
@@ -853,6 +855,9 @@ void playLevel()
 		updateEnvironment();
 		setSplitScroll(scroll_x);
 		prepareForNMI();
+#ifdef DEV_MODE
+		showLine();
+#endif
 	}
 }
 
