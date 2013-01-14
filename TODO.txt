@@ -1,5 +1,6 @@
 Prioritied TO DO List: 
-	OAM for On Demand column loading
+	OAM for On Demand column loading (90% working.  Seems to have a bug)
+
 	Better Player animation  	 
 	Clipping and Collision for player
 	Alternative player states
@@ -7,7 +8,9 @@ Prioritied TO DO List:
 	Weapon interaction (with enemies)      
 	Update music to be famitone compatable
 
-Progress Oct-Nov:
+
+January 2013:
+ Working on on demand OAM loading.  Storing the OAM in memory
 
 
 
@@ -31,20 +34,5 @@ Able to load the first 2 nametables and their OAM.
 Able to do split screen scrolling (fixed top status bar)
 Able to smooth scroll (swapping nametables when the overlap occurs)
 Figured out a workaround for ppu_waitnmi so I can do split screen and still have dynamic updates
-
-Progress Sept-Oct:
-  Fixed a status bar artifact when scrolling.
-  Managed to get dynamic column loading working (but not with OAM attribs yet)
-
-   
-
-
-
-
-
-
-
-
-
 
 
