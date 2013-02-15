@@ -19,8 +19,12 @@
 #define STATUS_BAR_CHR_DEST         0x0F00   
 
 // Adding 10 numbers for the sprites
-#define STATUS_BAR_NUM_SPRITES 10
-#define STATUS_BAR_SPRITES_DEST 0x1F60
+//#define STATUS_BAR_NUM_SPRITES 10
+//#define STATUS_BAR_SPRITES_DEST 0x1F60
+
+#define STATUS_BAR_NUM_SPRITES 40
+#define STATUS_BAR_SPRITES_DEST 0x1D80
+
 
 #ifdef TOP_STATUS
 /*

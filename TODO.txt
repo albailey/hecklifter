@@ -1,16 +1,10 @@
 Prioritied TO DO List: 
-	OAM for On Demand column loading (90% working.  Seems to have a bug)
-
 	Better Player animation  	 
 	Clipping and Collision for player
 	Alternative player states
 	Enemy interaction (with player)
 	Weapon interaction (with enemies)      
 	Update music to be famitone compatable
-
-
-January 2013:
- Working on on demand OAM loading.  Storing the OAM in memory
 
 
 
@@ -34,5 +28,16 @@ Able to load the first 2 nametables and their OAM.
 Able to do split screen scrolling (fixed top status bar)
 Able to smooth scroll (swapping nametables when the overlap occurs)
 Figured out a workaround for ppu_waitnmi so I can do split screen and still have dynamic updates
+Fixed Dynamic OAM loading for collumns
+
+
+
+Feb 10th.  Got player clipping working (1 point.  Still need mid and max points too)
+           Changed to add some player bounds.
+           Added DEV_MODE up/down controls
+           BROKEN: Does not factor properly when scrolled (ie: calculating collision against column 35  it might think its 3
+
+Feb 11th: Fixed proper scroll - collision code to properly intersect horizontally against correct collision formula
+
 
 

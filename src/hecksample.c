@@ -82,9 +82,17 @@ static unsigned char animateTitleScreen = FALSE;
 
 // This offset means we are using a top status bar of 8 columns
 #define NAMETABLE_OFFSET 256
+#define PLAYFIELD_Y_START 64
 #define NAMETABLE_OAM_OFFSET 16
 #define COLUMN_HEIGHT 11
 #define NUM_OAM_UPDATES 6
+
+// Need to determine if these should be variables instead of CONSTANTS
+#define PLAYER_MID 12 
+#define PLAYER_MAX 23
+
+#define SOLID 9
+
 
 #define NUM_LEVELS 1
 
@@ -701,7 +709,7 @@ void loadLevel(unsigned char tmpLevel)
 
 	// Step 6: Load the player and monster info
 	player_x = 40;
-	player_y = 200;
+	player_y = 180;
 	player_speed = 4;
 	playerSprite = 0xF7;
 	scroll_x = 0;
@@ -723,7 +731,7 @@ void loadLevel(unsigned char tmpLevel)
 }
 
 void prepareColumnForPPU() {
-    playerSprite = 	0xF6 + (loadColumn % 10);
+    playerSprite = 	0xD8 + (loadColumn % 10);
     // Uses: loadColumn and storeColumn
 
     currentPRGBank = setMMC1PRGBank(level_banks[(level << 2) + METATILE_TABLE_OFFSET]);
@@ -792,29 +800,106 @@ void scrollRight(unsigned char amnt) {
   doRightLoad(scroll_x / 16);
 }
 
+unsigned char checkHorizontal(int tmpAddr, unsigned char d1, unsigned char d2, unsigned char d3) {
+   meta = *((unsigned char*)(tmpAddr + d1));
+   tmpCharAddr = (unsigned char*) ((int)charAddr + (meta << 3)); // each metatile is 8 bytes in size
+   // determine collision type
+   meta    = *(tmpCharAddr+5);
+   if (meta == SOLID) {
+	return FALSE;
+   } 
+
+   if (d1 != d2) {
+     // mid is a different location. check it
+     meta = *((unsigned char*)(tmpAddr + d2));
+     tmpCharAddr = (unsigned char*) ((int)charAddr + (meta << 3)); // each metatile is 8 bytes in size
+     // determine collision type
+     meta    = *(tmpCharAddr+5);
+     if (meta == SOLID) {
+	return FALSE;
+     } 
+   }
+
+   if (d2 != d3) {
+	// mid and max are in a different meta block.  Check max
+     meta = *((unsigned char*)(tmpAddr + d3));
+     tmpCharAddr = (unsigned char*) ((int)charAddr + (meta << 3)); // each metatile is 8 bytes in size
+     // determine collision type
+     meta    = *(tmpCharAddr+5);
+     if (meta == SOLID) {
+	return FALSE;
+     } 
+   }
+
+   // if we get here, it is valid
+   return TRUE;
+}
+
+/*
+  checkLeft and checkRight should be generic functions usable for all clipping
+*/
+unsigned char checkLeft(unsigned char pos, unsigned char delta, unsigned char y, unsigned char midy, unsigned char maxy)  {
+   // if we are in the same column, no need to check
+   int srcIndex  = (scrollPage * 16) + ((scroll_x + pos)/16);
+   int destIndex = (scrollPage * 16) + ((scroll_x + pos - delta)/16);
+   if(srcIndex == destIndex){
+	return TRUE;
+   }
+   currentPRGBank = setMMC1PRGBank(level_banks[(level << 2) + METATILE_TABLE_OFFSET]);
+   charAddr = (unsigned char*)level_ptrs[ (level << 2)  + METATILE_TABLE_OFFSET ];
+
+   // calculate dest object. (calculate 3 points)
+   tmpAddr = 0x6000 + (destIndex * 16);
+   playerSprite = 0xD8 + (destIndex % 40);
+
+   return checkHorizontal(tmpAddr, ((y - PLAYFIELD_Y_START) / 16) ,((midy - PLAYFIELD_Y_START) / 16) , ((maxy - PLAYFIELD_Y_START) / 16));
+
+}
+
+unsigned char checkRight(unsigned char pos, unsigned char delta, unsigned char y, unsigned char midy, unsigned char maxy)  {
+   int srcIndex  = (scrollPage * 16) + ((scroll_x + pos)/16);
+   int destIndex = (scrollPage * 16) + ((scroll_x + pos + delta)/16);
+   if(srcIndex == destIndex){
+	return TRUE;
+   }
+   currentPRGBank = setMMC1PRGBank(level_banks[(level << 2) + METATILE_TABLE_OFFSET]);
+   charAddr = (unsigned char*)level_ptrs[ (level << 2)  + METATILE_TABLE_OFFSET ];
+   tmpAddr = 0x6000 + (destIndex * 16);
+   playerSprite = 0xD8 + (destIndex % 40);
+   return checkHorizontal(tmpAddr, ((y - PLAYFIELD_Y_START) / 16) ,((midy - PLAYFIELD_Y_START) / 16) , ((maxy - PLAYFIELD_Y_START) / 16));
+}
+
 
 void getPlayerInput()
 {
+	// TO DO: only get player input in game mode
 	i = pad_poll(0);
 	if(i != 0) {
        		if(i&PAD_LEFT) {
+		    // check that the player can move left
+		    if(checkLeft(player_x, player_speed, player_y, player_y + PLAYER_MID, player_y + PLAYER_MAX)) {
 			if((player_x - player_speed) >  LEFT_SCROLL_TRIGGER) {
 				player_x -= player_speed;
 			} else {
 				scrollLeft(player_speed);
 			}
+		    }
 		}
        		if(i&PAD_RIGHT) {
+		    if(checkRight(player_x, player_speed, player_y, player_y + PLAYER_MID, player_y + PLAYER_MAX)) {
 			if((player_x + player_speed) <  RIGHT_SCROLL_TRIGGER) {
 				player_x += player_speed;
 			} else {
 				scrollRight(player_speed);
 			}
+		   }
 		}
 
-        	//if(i&PAD_UP   &&player_y>  16) player_y-=STEP;
-        	//if(i&PAD_DOWN &&player_y<(240-24)) player_y+=STEP;
-
+#ifdef DEV_MODE
+		// TEMP CONTROLS for UP and DOWN
+        	if(i&PAD_UP   && player_y >  16) player_y -= 2;
+        	if(i&PAD_DOWN && player_y <(240-24)) player_y += 2;
+#endif
 		
 	}
 	//attackMode = (i&PAD_A);
@@ -828,6 +913,16 @@ void updatePlayer()
                  playerSprite,
 		 0x01,
 		 PLAYER_SPRITE_START_INDEX);
+ 	oam_spr( player_x,
+		 player_y + 8,
+                 playerSprite,
+		 0x01,
+		 PLAYER_SPRITE_START_INDEX+4);
+ 	oam_spr( player_x,
+		 player_y + 16,
+                 playerSprite,
+		 0x01,
+		 PLAYER_SPRITE_START_INDEX+8);
 }
 void updateMonsters()
 {
