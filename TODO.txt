@@ -40,4 +40,16 @@ Feb 10th.  Got player clipping working (1 point.  Still need mid and max points 
 Feb 11th: Fixed proper scroll - collision code to properly intersect horizontally against correct collision formula
 
 
+ Uploaded new revision
+--------------------------
+
+Feb 20: Eliminated compiler warnings.
+        Remembered to include width in bounds calculation when moving right for horizontal bounds checks
+        Started vertical movement check.
+
+March 14: Fixed vertical clipping.  Can now move the character around horizontally and vertically.  Current character bounds are  8x24
+
+ Uploaded new revision
+--------------------------
+
 

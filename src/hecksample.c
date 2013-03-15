@@ -1,4 +1,7 @@
-#define DEV_MODE 1
+#define DEV_MODE          1
+#define SHOW_CUT_SCENES   1
+#define SHOW_TITLE_SCREEN 1
+
 
 // scroll engine defines
 #define LEFT_SCROLL_TRIGGER  32
@@ -25,9 +28,6 @@
 #define SET_ODD_OAM_MASK    0x33
 #define SET_EVEN_OAM_MASK   0xCC
 
-
-
-
 #include "neslib.h"
 #include "utils.h"
 #include "mmc1Mapper.h"
@@ -36,8 +36,6 @@
 #include "statusBar.h"
 
 #include "level1.h"
-
-
 
 // Memory starts at 0x0327
 
@@ -88,8 +86,10 @@ static unsigned char animateTitleScreen = FALSE;
 #define NUM_OAM_UPDATES 6
 
 // Need to determine if these should be variables instead of CONSTANTS
-#define PLAYER_MID 12 
-#define PLAYER_MAX 23
+#define PLAYER_HEIGHT_MID 12 
+#define PLAYER_HEIGHT_MAX 23
+#define PLAYER_WID_MID 4 
+#define PLAYER_WID_MAX 8
 
 #define SOLID 9
 
@@ -114,7 +114,7 @@ static unsigned char column2_update[COLUMN_HEIGHT * 2 * 3];
 static unsigned char oam_column_update[NUM_OAM_UPDATES * 3];
 
 const int level_ptrs[ NUM_LEVELS * 4 ] = {
-   &LEVEL1_PALETTE_ADDR, &LEVEL1_METATILES_ADDR, &LEVEL1_TILES_ADDR,  &LEVEL1_COLUMNS_ADDR
+   (int)(&LEVEL1_PALETTE_ADDR), (int)(&LEVEL1_METATILES_ADDR), (int)(&LEVEL1_TILES_ADDR),  (int)(&LEVEL1_COLUMNS_ADDR)
 };
 
 const unsigned char level_banks[ NUM_LEVELS * 4 ] = {
@@ -133,7 +133,10 @@ static unsigned char playerHealth;
 static unsigned char player_x;
 static unsigned char player_y;
 static unsigned char player_speed;
+static unsigned char player_climb_speed;
 static unsigned char playerSprite;
+static unsigned char playerSprite2;
+static unsigned char playerSprite3;
 
 static unsigned char scrollColumn;
 static unsigned char scrollPage;
@@ -161,10 +164,6 @@ void initMapper()
         // PRG $8000 will be bank 0
         currentPRGBank = initMMC1Mapper(0x1E); // 0x1E = #%00011110
 }
-
-
-
-
 
 // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 //
@@ -238,6 +237,7 @@ void put_char(unsigned int adr,unsigned char letter)
     set_vram_update(3,single_update);
 }
 
+
 void loadCutScene(unsigned char i) {
      // turn off graphics
      ppu_waitnmi();//wait for next TV frame
@@ -256,7 +256,6 @@ void loadCutScene(unsigned char i) {
     // Load in the alphabet characters
     addr = getAlphabetCHRAddr();
     vram_write((unsigned char*)addr, 0x1000 - (ALPHABET_SIZE * 16), ALPHABET_SIZE * 16);
-
 
     addr = getCutScenePaletteAddr(i);
     for(j=0;j<16;j++){
@@ -710,8 +709,10 @@ void loadLevel(unsigned char tmpLevel)
 	// Step 6: Load the player and monster info
 	player_x = 40;
 	player_y = 180;
-	player_speed = 4;
-	playerSprite = 0xF7;
+	player_speed = 2;
+	player_climb_speed = 2;
+	playerSprite = 0xD8;
+        scrollPage=0;
 	scroll_x = 0;
 	currentPagePPU = PAGE_ZERO_PPU_SETTINGS;
 	nmiLoad = 0;
@@ -731,7 +732,7 @@ void loadLevel(unsigned char tmpLevel)
 }
 
 void prepareColumnForPPU() {
-    playerSprite = 	0xD8 + (loadColumn % 10);
+    //playerSprite = 	0xD8 + (loadColumn % 10);
     // Uses: loadColumn and storeColumn
 
     currentPRGBank = setMMC1PRGBank(level_banks[(level << 2) + METATILE_TABLE_OFFSET]);
@@ -791,7 +792,7 @@ void scrollRight(unsigned char amnt) {
   } else {
      if(scrollPage < maxScrollPage ) {
 	scrollPage++;
-        scroll_x+=amnt; // this should wrap
+        scroll_x = ((scroll_x + amnt) & 0xFF); // this should wrap
         currentPagePPU ^= PAGE_EOR_PPU_SETTINGS;       
      } else {
         scroll_x = 255;
@@ -805,6 +806,10 @@ unsigned char checkHorizontal(int tmpAddr, unsigned char d1, unsigned char d2, u
    tmpCharAddr = (unsigned char*) ((int)charAddr + (meta << 3)); // each metatile is 8 bytes in size
    // determine collision type
    meta    = *(tmpCharAddr+5);
+#ifdef SPRITE_HELPER_MODE
+   playerSprite  = 0xD8 + (meta % 40);
+   playerSprite2  = 0xD8 + (d1 % 40);
+#endif
    if (meta == SOLID) {
 	return FALSE;
    } 
@@ -816,6 +821,10 @@ unsigned char checkHorizontal(int tmpAddr, unsigned char d1, unsigned char d2, u
      // determine collision type
      meta    = *(tmpCharAddr+5);
      if (meta == SOLID) {
+#ifdef SPRITE_HELPER_MODE
+   playerSprite  = 0xD8 + (meta % 40);
+   playerSprite2  = 0xD8 + (d2 % 40);
+#endif
 	return FALSE;
      } 
    }
@@ -827,6 +836,10 @@ unsigned char checkHorizontal(int tmpAddr, unsigned char d1, unsigned char d2, u
      // determine collision type
      meta    = *(tmpCharAddr+5);
      if (meta == SOLID) {
+#ifdef SPRITE_HELPER_MODE
+   playerSprite  = 0xD8 + (meta % 40);
+   playerSprite2  = 0xD8 + (d3 % 40);
+#endif
 	return FALSE;
      } 
    }
@@ -840,35 +853,106 @@ unsigned char checkHorizontal(int tmpAddr, unsigned char d1, unsigned char d2, u
 */
 unsigned char checkLeft(unsigned char pos, unsigned char delta, unsigned char y, unsigned char midy, unsigned char maxy)  {
    // if we are in the same column, no need to check
-   int srcIndex  = (scrollPage * 16) + ((scroll_x + pos)/16);
-   int destIndex = (scrollPage * 16) + ((scroll_x + pos - delta)/16);
+   int srcIndex  = ((scroll_x + pos) >> 4);
+   int destIndex = ((scroll_x + pos - delta) >> 4 );
+
+#ifdef SPRITE_HELPER_MODE
+   playerSprite  = 0xD8 + (scrollPage % 40);
+   playerSprite2 = 0xD8 + (scroll_x % 40);
+   playerSprite3 = 0xD8 + (destIndex % 40);
+#endif
+
+#ifdef OPTIMIZED_MODE
    if(srcIndex == destIndex){
 	return TRUE;
    }
+#endif
    currentPRGBank = setMMC1PRGBank(level_banks[(level << 2) + METATILE_TABLE_OFFSET]);
    charAddr = (unsigned char*)level_ptrs[ (level << 2)  + METATILE_TABLE_OFFSET ];
+   destIndex = (scrollPage << 4 ) + ((scroll_x + pos - delta) >> 4);
 
    // calculate dest object. (calculate 3 points)
-   tmpAddr = 0x6000 + (destIndex * 16);
-   playerSprite = 0xD8 + (destIndex % 40);
+   tmpAddr = 0x6000 + (destIndex << 4);
 
-   return checkHorizontal(tmpAddr, ((y - PLAYFIELD_Y_START) / 16) ,((midy - PLAYFIELD_Y_START) / 16) , ((maxy - PLAYFIELD_Y_START) / 16));
+   return checkHorizontal(tmpAddr, ((y - PLAYFIELD_Y_START) >> 4) ,((midy - PLAYFIELD_Y_START) >> 4 ) , ((maxy - PLAYFIELD_Y_START) >> 4 ));
 
 }
 
 unsigned char checkRight(unsigned char pos, unsigned char delta, unsigned char y, unsigned char midy, unsigned char maxy)  {
-   int srcIndex  = (scrollPage * 16) + ((scroll_x + pos)/16);
-   int destIndex = (scrollPage * 16) + ((scroll_x + pos + delta)/16);
+   int srcIndex  = ((scroll_x + pos) / 16);
+   int destIndex = ((scroll_x + pos + delta) / 16);
+
+#ifdef SPRITE_HELPER_MODE
+   playerSprite  = 0xD8 + (scrollPage % 40);
+   playerSprite2 = 0xD8 + (scroll_x % 40);
+   playerSprite3 = 0xD8 + (destIndex % 40);
+#endif
+
+#ifdef OPTIMIZED_MODE
    if(srcIndex == destIndex){
 	return TRUE;
    }
+#endif
    currentPRGBank = setMMC1PRGBank(level_banks[(level << 2) + METATILE_TABLE_OFFSET]);
    charAddr = (unsigned char*)level_ptrs[ (level << 2)  + METATILE_TABLE_OFFSET ];
-   tmpAddr = 0x6000 + (destIndex * 16);
-   playerSprite = 0xD8 + (destIndex % 40);
-   return checkHorizontal(tmpAddr, ((y - PLAYFIELD_Y_START) / 16) ,((midy - PLAYFIELD_Y_START) / 16) , ((maxy - PLAYFIELD_Y_START) / 16));
+
+   destIndex = (scrollPage << 4 ) + ((scroll_x + pos + delta) >> 4);
+   tmpAddr = 0x6000 + (destIndex << 4);
+   return checkHorizontal(tmpAddr, ((y - PLAYFIELD_Y_START) >> 4) ,((midy - PLAYFIELD_Y_START) >> 4) , ((maxy - PLAYFIELD_Y_START) >> 4));
 }
 
+unsigned char checkVertical(int tmpAddr, unsigned char d1) {
+   meta = *((unsigned char*)(tmpAddr + d1));
+   tmpCharAddr = (unsigned char*) ((int)charAddr + (meta << 3)); // each metatile is 8 bytes in size
+   // determine collision type
+   meta    = *(tmpCharAddr+5);
+   playerSprite  = 0xD8 + (meta % 40);
+   playerSprite2  = 0xD8 + (d1 % 40);
+   return (meta != SOLID); 
+
+}
+
+unsigned char checkVert(unsigned char oldy, unsigned char newy, unsigned char d1, unsigned char d2, unsigned char d3)  {
+   int destIndex = 0;
+   unsigned char dy = ((newy - PLAYFIELD_Y_START) >> 4 );
+
+   playerSprite  = 0xD8 + (scrollPage % 40);
+   playerSprite2 = 0xD8 + (scroll_x % 40);
+   playerSprite3 = 0xD8 + (d1 % 40);
+
+   // if we are in the same metatile, no need to check
+#ifdef OPTIMIZED_MODE
+   if (((oldy - PLAYFIELD_Y_START) / 16) == ((newy - PLAYFIELD_Y_START)/16)) {
+	return TRUE;
+   }
+#endif
+   currentPRGBank = setMMC1PRGBank(level_banks[(level << 2) + METATILE_TABLE_OFFSET]);
+   charAddr = (unsigned char*)level_ptrs[ (level << 2)  + METATILE_TABLE_OFFSET ];
+
+   destIndex = (scrollPage * 16) + d1;
+   tmpAddr = 0x6000 + (destIndex << 4);
+   if (! checkVertical(tmpAddr, dy)) {
+     return FALSE;
+   }
+
+   if (d2 != d1) {
+   	destIndex = (scrollPage * 16) + d2;
+      tmpAddr = 0x6000 + (destIndex << 4);
+   if (! checkVertical(tmpAddr, dy)) {
+        return FALSE;
+      }
+  }
+
+   if (d2 != d3) {
+   	destIndex = (scrollPage * 16) + d3;
+      tmpAddr = 0x6000 + (destIndex << 4 );
+   if (! checkVertical(tmpAddr, dy)) {
+        return FALSE;
+      }
+  }
+  return TRUE;
+
+}
 
 void getPlayerInput()
 {
@@ -877,7 +961,7 @@ void getPlayerInput()
 	if(i != 0) {
        		if(i&PAD_LEFT) {
 		    // check that the player can move left
-		    if(checkLeft(player_x, player_speed, player_y, player_y + PLAYER_MID, player_y + PLAYER_MAX)) {
+		    if(checkLeft(player_x, player_speed, player_y, player_y + PLAYER_HEIGHT_MID, player_y + PLAYER_HEIGHT_MAX)) {
 			if((player_x - player_speed) >  LEFT_SCROLL_TRIGGER) {
 				player_x -= player_speed;
 			} else {
@@ -886,7 +970,7 @@ void getPlayerInput()
 		    }
 		}
        		if(i&PAD_RIGHT) {
-		    if(checkRight(player_x, player_speed, player_y, player_y + PLAYER_MID, player_y + PLAYER_MAX)) {
+		    if(checkRight(player_x + PLAYER_WID_MAX, player_speed, player_y, player_y + PLAYER_HEIGHT_MID, player_y + PLAYER_HEIGHT_MAX)) {
 			if((player_x + player_speed) <  RIGHT_SCROLL_TRIGGER) {
 				player_x += player_speed;
 			} else {
@@ -894,13 +978,17 @@ void getPlayerInput()
 			}
 		   }
 		}
+       		if(i&PAD_UP) {
+		    if(checkVert(player_y, player_y - player_climb_speed, ((scroll_x + player_x) >> 4), ((scroll_x + player_x + PLAYER_WID_MID) >> 4), ((scroll_x + player_x + PLAYER_WID_MAX) >> 4))) {
+			player_y -= player_climb_speed;
+		   }
+		}
+       		if(i&PAD_DOWN) {
+		    if(checkVert(player_y + PLAYER_HEIGHT_MAX, player_y + PLAYER_HEIGHT_MAX + player_climb_speed, ((scroll_x + player_x) >> 4), ((scroll_x + player_x + PLAYER_WID_MID) >> 4), ((scroll_x + player_x + PLAYER_WID_MAX) >> 4))) {
+			player_y += player_climb_speed;
+		   }
+		}
 
-#ifdef DEV_MODE
-		// TEMP CONTROLS for UP and DOWN
-        	if(i&PAD_UP   && player_y >  16) player_y -= 2;
-        	if(i&PAD_DOWN && player_y <(240-24)) player_y += 2;
-#endif
-		
 	}
 	//attackMode = (i&PAD_A);
 
@@ -915,12 +1003,12 @@ void updatePlayer()
 		 PLAYER_SPRITE_START_INDEX);
  	oam_spr( player_x,
 		 player_y + 8,
-                 playerSprite,
+                 playerSprite2,
 		 0x01,
 		 PLAYER_SPRITE_START_INDEX+4);
  	oam_spr( player_x,
 		 player_y + 16,
-                 playerSprite,
+                 playerSprite3,
 		 0x01,
 		 PLAYER_SPRITE_START_INDEX+8);
 }
@@ -974,10 +1062,12 @@ void main(void)
 {
 	initMapper(); // This must be the first thing we DO
 
-#ifndef DEV_MODE
+#ifdef SHOW_CUT_SCENES
 	// Stage 1:  CUT SCENES
 	displayCutSceneSequence();
+#endif
 
+#ifdef SHOW_TITLE_SCREEN
 	// Stage 2:  TITLE SCREEN
 	displayTitleScreen();
 #endif
