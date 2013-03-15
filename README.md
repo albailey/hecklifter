@@ -33,13 +33,15 @@ Known Problems
 This is still an early development port of working ASM code which is being rewritten in CC65 compatably C code.  
 It's far from being usable.
 - Several grey lines at the top.  Those are added to indicate timing.  I need to add build settings to turn them off.
+- Moving diagonally near the edge of the screen causes a graphical glitch.  
+- This is because the collision code for horizontal and vertical combined with scroll-loading is too much to do in one screen drawing period.
 
 Fixed Problems
 ==============
 - Scrolling and status area flickering when running in Nintendulator (which means it will likely have the same problems on real hardware)
 
-
 TO DO
 ======
 - move the contents of the TODO file here.
-- Add back in the clipping code and gravity
+- Implement jumping, climbing and gravity
+- Replace the numbers with an actual player sprite. I currently use numbers to reflect some internal values.
