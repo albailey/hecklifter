@@ -1,6 +1,17 @@
-#define DEV_MODE          1
+//#define DEV_MODE          1
+#define OPTIMIZED_MODE    1
+
 #define SHOW_CUT_SCENES   1
 #define SHOW_TITLE_SCREEN 1
+
+#include "gamerules.h"
+
+// PLAYER STATE CONSTANTS
+#define STANDING_MODE 0
+#define MOVING_MODE   1
+#define JUMPING_MODE  2
+#define FALLING_MODE  3
+
 
 
 // scroll engine defines
@@ -134,6 +145,8 @@ static unsigned char player_x;
 static unsigned char player_y;
 static unsigned char player_speed;
 static unsigned char player_climb_speed;
+static unsigned char player_mode;
+static unsigned char player_counter;
 static unsigned char playerSprite;
 static unsigned char playerSprite2;
 static unsigned char playerSprite3;
@@ -503,6 +516,10 @@ void nmiLoadNametableColumn(unsigned char srcIndex, unsigned char destColumn)
 }
 
 void prepareForNMI() {
+	if(nmiLoad == 0) {
+    		set_vram_update(0, column1_update);
+		return; // jump out early so we do not decrement further
+	}
 	if(nmiLoad == 3) {
 		// COL 1
     		set_vram_update(COLUMN_HEIGHT * 2, column1_update);
@@ -562,10 +579,6 @@ void prepareForNMI() {
 		}
 
     		set_vram_update(NUM_OAM_UPDATES, oam_column_update);
-	}
-	if(nmiLoad == 0) {
-    		set_vram_update(0, column1_update);
-		return; // jump out early so we do not decrement further
 	}
 	--nmiLoad;
 }
@@ -708,10 +721,14 @@ void loadLevel(unsigned char tmpLevel)
 
 	// Step 6: Load the player and monster info
 	player_x = 40;
-	player_y = 180;
+	player_y = 140;
+	player_mode = STANDING_MODE;
+	player_counter = 0;
 	player_speed = 2;
 	player_climb_speed = 2;
-	playerSprite = 0xD8;
+	playerSprite  = 0xD8;
+	playerSprite2 = 0xD8;
+	playerSprite3 = 0xD8;
         scrollPage=0;
 	scroll_x = 0;
 	currentPagePPU = PAGE_ZERO_PPU_SETTINGS;
@@ -732,9 +749,7 @@ void loadLevel(unsigned char tmpLevel)
 }
 
 void prepareColumnForPPU() {
-    //playerSprite = 	0xD8 + (loadColumn % 10);
-    // Uses: loadColumn and storeColumn
-
+    // Uses: loadColumn and storeColumn variables populated elsewhere
     currentPRGBank = setMMC1PRGBank(level_banks[(level << 2) + METATILE_TABLE_OFFSET]);
     charAddr = (unsigned char*)level_ptrs[ (level << 2)  + METATILE_TABLE_OFFSET ];
     nmiLoadNametableColumn(loadColumn,storeColumn);
@@ -806,10 +821,6 @@ unsigned char checkHorizontal(int tmpAddr, unsigned char d1, unsigned char d2, u
    tmpCharAddr = (unsigned char*) ((int)charAddr + (meta << 3)); // each metatile is 8 bytes in size
    // determine collision type
    meta    = *(tmpCharAddr+5);
-#ifdef SPRITE_HELPER_MODE
-   playerSprite  = 0xD8 + (meta % 40);
-   playerSprite2  = 0xD8 + (d1 % 40);
-#endif
    if (meta == SOLID) {
 	return FALSE;
    } 
@@ -821,10 +832,6 @@ unsigned char checkHorizontal(int tmpAddr, unsigned char d1, unsigned char d2, u
      // determine collision type
      meta    = *(tmpCharAddr+5);
      if (meta == SOLID) {
-#ifdef SPRITE_HELPER_MODE
-   playerSprite  = 0xD8 + (meta % 40);
-   playerSprite2  = 0xD8 + (d2 % 40);
-#endif
 	return FALSE;
      } 
    }
@@ -836,10 +843,6 @@ unsigned char checkHorizontal(int tmpAddr, unsigned char d1, unsigned char d2, u
      // determine collision type
      meta    = *(tmpCharAddr+5);
      if (meta == SOLID) {
-#ifdef SPRITE_HELPER_MODE
-   playerSprite  = 0xD8 + (meta % 40);
-   playerSprite2  = 0xD8 + (d3 % 40);
-#endif
 	return FALSE;
      } 
    }
@@ -855,12 +858,6 @@ unsigned char checkLeft(unsigned char pos, unsigned char delta, unsigned char y,
    // if we are in the same column, no need to check
    int srcIndex  = ((scroll_x + pos) >> 4);
    int destIndex = ((scroll_x + pos - delta) >> 4 );
-
-#ifdef SPRITE_HELPER_MODE
-   playerSprite  = 0xD8 + (scrollPage % 40);
-   playerSprite2 = 0xD8 + (scroll_x % 40);
-   playerSprite3 = 0xD8 + (destIndex % 40);
-#endif
 
 #ifdef OPTIMIZED_MODE
    if(srcIndex == destIndex){
@@ -882,12 +879,6 @@ unsigned char checkRight(unsigned char pos, unsigned char delta, unsigned char y
    int srcIndex  = ((scroll_x + pos) / 16);
    int destIndex = ((scroll_x + pos + delta) / 16);
 
-#ifdef SPRITE_HELPER_MODE
-   playerSprite  = 0xD8 + (scrollPage % 40);
-   playerSprite2 = 0xD8 + (scroll_x % 40);
-   playerSprite3 = 0xD8 + (destIndex % 40);
-#endif
-
 #ifdef OPTIMIZED_MODE
    if(srcIndex == destIndex){
 	return TRUE;
@@ -906,19 +897,13 @@ unsigned char checkVertical(int tmpAddr, unsigned char d1) {
    tmpCharAddr = (unsigned char*) ((int)charAddr + (meta << 3)); // each metatile is 8 bytes in size
    // determine collision type
    meta    = *(tmpCharAddr+5);
-   playerSprite  = 0xD8 + (meta % 40);
-   playerSprite2  = 0xD8 + (d1 % 40);
    return (meta != SOLID); 
 
 }
 
 unsigned char checkVert(unsigned char oldy, unsigned char newy, unsigned char d1, unsigned char d2, unsigned char d3)  {
    int destIndex = 0;
-   unsigned char dy = ((newy - PLAYFIELD_Y_START) >> 4 );
-
-   playerSprite  = 0xD8 + (scrollPage % 40);
-   playerSprite2 = 0xD8 + (scroll_x % 40);
-   playerSprite3 = 0xD8 + (d1 % 40);
+   unsigned char dy = 0;
 
    // if we are in the same metatile, no need to check
 #ifdef OPTIMIZED_MODE
@@ -926,6 +911,7 @@ unsigned char checkVert(unsigned char oldy, unsigned char newy, unsigned char d1
 	return TRUE;
    }
 #endif
+   dy = ((newy - PLAYFIELD_Y_START) >> 4 );
    currentPRGBank = setMMC1PRGBank(level_banks[(level << 2) + METATILE_TABLE_OFFSET]);
    charAddr = (unsigned char*)level_ptrs[ (level << 2)  + METATILE_TABLE_OFFSET ];
 
@@ -956,9 +942,9 @@ unsigned char checkVert(unsigned char oldy, unsigned char newy, unsigned char d1
 
 void getPlayerInput()
 {
-	// TO DO: only get player input in game mode
 	i = pad_poll(0);
 	if(i != 0) {
+		// CANNOT move both Left and Right at the same time
        		if(i&PAD_LEFT) {
 		    // check that the player can move left
 		    if(checkLeft(player_x, player_speed, player_y, player_y + PLAYER_HEIGHT_MID, player_y + PLAYER_HEIGHT_MAX)) {
@@ -968,8 +954,7 @@ void getPlayerInput()
 				scrollLeft(player_speed);
 			}
 		    }
-		}
-       		if(i&PAD_RIGHT) {
+		} else if(i&PAD_RIGHT) {
 		    if(checkRight(player_x + PLAYER_WID_MAX, player_speed, player_y, player_y + PLAYER_HEIGHT_MID, player_y + PLAYER_HEIGHT_MAX)) {
 			if((player_x + player_speed) <  RIGHT_SCROLL_TRIGGER) {
 				player_x += player_speed;
@@ -978,24 +963,83 @@ void getPlayerInput()
 			}
 		   }
 		}
+		// CANNOT move both UP and DOWN at the same time
        		if(i&PAD_UP) {
-		    if(checkVert(player_y, player_y - player_climb_speed, ((scroll_x + player_x) >> 4), ((scroll_x + player_x + PLAYER_WID_MID) >> 4), ((scroll_x + player_x + PLAYER_WID_MAX) >> 4))) {
-			player_y -= player_climb_speed;
-		   }
-		}
-       		if(i&PAD_DOWN) {
-		    if(checkVert(player_y + PLAYER_HEIGHT_MAX, player_y + PLAYER_HEIGHT_MAX + player_climb_speed, ((scroll_x + player_x) >> 4), ((scroll_x + player_x + PLAYER_WID_MID) >> 4), ((scroll_x + player_x + PLAYER_WID_MAX) >> 4))) {
-			player_y += player_climb_speed;
-		   }
+		} else if(i&PAD_DOWN) {
 		}
 
+		// check if we just pressed JUMP
+		if  (i & PAD_B) { // pressed JUMP button
+	   		// the player can only go in jump mode if they are not FALLING or JUMPING
+           		if((player_mode != JUMPING_MODE) && (player_mode != FALLING_MODE)) {
+             			player_mode = JUMPING_MODE;
+                                player_climb_speed = INITIAL_JUMP_VELOCITY;
+				player_counter = JUMP_DURATION;
+	   		}
+		} else if (player_mode == JUMPING_MODE) {
+			// player released the jump button, drop to a lower jump velocity
+                        player_climb_speed = REDUCED_JUMP_VELOCITY;
+		}
+		
+
+		// check if we did the ACTION button (A for attack)
+		if  (i & PAD_A) { // pressed ATTACK button
+		}
+
+		// process SELECT
+		if  (i & PAD_SELECT) { // pressed SELECT button
+		}
+
+		// process START
+		if  (i & PAD_SELECT) { // pressed START button
+		}
 	}
-	//attackMode = (i&PAD_A);
 
-	
+
+
+
+
 }
 void updatePlayer()
 {
+
+	if (player_mode == JUMPING_MODE) {
+		if (player_counter == 0 ) {
+			// jump duration over. Move to falling mode
+			player_mode = FALLING_MODE;
+                	player_climb_speed = GRAVITY_VELOCITY;
+		} else {
+			// check the upward momentum
+			if(checkVert(player_y, player_y - player_climb_speed, ((scroll_x + player_x) >> 4), ((scroll_x + player_x + PLAYER_WID_MID) >> 4), ((scroll_x + player_x + PLAYER_WID_MAX) >> 4))) {
+				player_y -= player_climb_speed;
+			} else {
+				player_mode = FALLING_MODE;
+                		player_climb_speed = GRAVITY_VELOCITY;
+			}
+		}
+	} 
+	if (player_mode == STANDING_MODE || player_mode == FALLING_MODE) {
+		// check gravity
+		if(checkVert(player_y + PLAYER_HEIGHT_MAX, player_y + PLAYER_HEIGHT_MAX + player_climb_speed, ((scroll_x + player_x) >> 4), ((scroll_x + player_x + PLAYER_WID_MID) >> 4), ((scroll_x + player_x + PLAYER_WID_MAX) >> 4))) {
+			player_y += player_climb_speed;
+		} else {
+			player_mode = STANDING_MODE;
+                	player_climb_speed = GRAVITY_VELOCITY;
+		}
+	}
+
+	// Algorithm:
+        // TO DO: support JUMP
+	//        support crouch
+	//        support ladder
+	//        support door
+	//        support hurt
+	//        support off bottom (death by pit)
+
+
+	--player_counter;
+
+        // TO DO: Update player sprites based on player state
  	oam_spr( player_x,
 		 player_y,
                  playerSprite,
@@ -1015,16 +1059,17 @@ void updatePlayer()
 void updateMonsters()
 {
 }
+
 void updateEnvironment()
 {
 }
 
-void wtf() {
-}
 
 void playLevel() 
 {
 	loadLevel(currentLevel);
+
+	// TO DO: change this to while level_active
 	while(1)
 	{
      		ppu_waitnmi();
@@ -1034,8 +1079,8 @@ void playLevel()
     		setScreenNow(currentPagePPU);
 		getPlayerInput();
 		updatePlayer();
-		updateMonsters();
-		updateEnvironment();
+		//updateMonsters();
+		//updateEnvironment();
 		setSplitScroll(scroll_x);
 		prepareForNMI();
 #ifdef DEV_MODE
@@ -1074,7 +1119,7 @@ void main(void)
 
 	playerHealth = STARTING_HEALTH;
 	currentLevel = 1;
-	while(playerHealth >0 && currentLevel <= NUM_LEVELS) {
+	while(playerHealth > 0 && currentLevel <= NUM_LEVELS) {
 		playLevel();
 		if(playerHealth > 0 ) {
 			currentLevel++;
