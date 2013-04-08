@@ -52,4 +52,7 @@ March 14: Fixed vertical clipping.  Can now move the character around horizontal
  Uploaded new revision
 --------------------------
 
+April 4:   Added gravity.  Removed dev mode for up/down moving around.  Need to add in JUMP.
+April 7:   Added JUMP capability (which also includes handling a fall state).  It needs improvement
+
 
