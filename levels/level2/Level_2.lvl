@@ -1,0 +1,24 @@
+; Level: C:\Personal\NES\Dev\src\cc65\hecklifter\levels\level2\level2.levelEditor
+Level_2:
+.byt $00 ; Tilebank.  Change this to whichever bank is used for the tiles
+.byt $25 ; Number of CHR Tiles to load. F0 is the max
+.addr Level_2Tiles ; Address of CHR Tiles to loadinto $0000
+.addr Level_2TileSet ; Address of MetaTileSet to use
+.byt $08 ; Num Level screens. 
+.addr Level_2Columns ; Address of columns used by this level
+
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-= 
+; This section is the palette
+.include Level_2.palette
+
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-= 
+; This section are the metatiles
+.include Level_2.metatiles
+
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-= 
+; This section are the tiles
+.incbin Level_2.tiles
+
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-= 
+; This section are the columns.
+.include Level_2.columns

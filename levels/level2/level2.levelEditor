@@ -1,0 +1,14 @@
+#Sun May 05 22:35:11 EDT 2013
+.byt=$08 ; Num Level screens. 
+LEVEL_EDITOR_BG_STAMPS_FILE_0=Level_2.bgStamps
+LEVEL_EDITOR_COLUMN_FILE_0=Level_2.columns
+LEVEL_EDITOR_SCREENS_HIGH_0=1
+;=This section are the columns.
+LEVEL_EDITOR_TILES_WIDE_0=32
+LEVEL_EDITOR_SPRITE_STAMPS_FILE_0=Level_2.sprStamps
+.addr=Level_2Columns ; Address of columns used by this level
+.incbin=Level_2.tiles
+LEVEL_EDITOR_TILES_HIGH_0=22
+LEVEL_EDITOR_PALETTE_FILE_0=Level_2.palette
+Level_2=
+.include=Level_2.columns
