@@ -1,7 +1,7 @@
 Prioritied TO DO List: 
 	Better Player animation  	 
-	Clipping and Collision for player
-	Alternative player states
+	(done) Clipping and Collision for player
+	(semi done) Alternative player states
 	Enemy interaction (with player)
 	Weapon interaction (with enemies)      
 	Update music to be famitone compatable
@@ -54,5 +54,17 @@ March 14: Fixed vertical clipping.  Can now move the character around horizontal
 
 April 4:   Added gravity.  Removed dev mode for up/down moving around.  Need to add in JUMP.
 April 7:   Added JUMP capability (which also includes handling a fall state).  It needs improvement
+ Uploaded new revision
+
+
+
+TO DO:   Add tools to github
+         Add color attribute to level editor
+         Add Door/Portal/Trigger for level transition
+
+July Update:
+Attempting to add a level2 and add a portal to allow moving from level 1 to level 2.   Not finished.   Did move the player location and level loading constants into a data table.
+
+
 
 

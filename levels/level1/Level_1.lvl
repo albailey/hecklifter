@@ -1,4 +1,4 @@
-; Level: C:\Personal\NES\Dev\src\hellraiser\hecklifter\levels\editor\level1.level
+; Level: C:\Personal\NES\Dev\src\cc65\hecklifter\levels\level1\level1.levelEditor
 Level_1:
 .byt $00 ; Tilebank.  Change this to whichever bank is used for the tiles
 .byt $25 ; Number of CHR Tiles to load. F0 is the max
